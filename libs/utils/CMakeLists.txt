@@ -28,7 +28,7 @@ target_include_directories(
 target_link_libraries(
   ${LIBRARY_TARGET_NAME}
   PUBLIC
-    Boost::headers
+    project_warnings project_options
 )
 
 message(STATUS "Created target ${LIBRARY_TARGET_NAME} for export ${PROJECT_NAME}.")

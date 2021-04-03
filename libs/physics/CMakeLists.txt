@@ -29,6 +29,7 @@ target_link_libraries(
   PRIVATE project_options
           project_warnings
   PUBLIC
+          EvolutionaryWalker::LibUtils
           Boost::headers
 )
 
