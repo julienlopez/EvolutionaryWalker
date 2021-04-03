@@ -5,5 +5,4 @@ target_link_libraries(
   PRIVATE project_options
           project_warnings
           CONAN_PKG::docopt.cpp
-          CONAN_PKG::fmt
           CONAN_PKG::spdlog)
