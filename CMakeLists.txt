@@ -89,9 +89,11 @@ endif()
 
 set(USE_CONAN_FOR_BOOST CACHE BOOL TRUE)
 if(USE_CONAN_FOR_BOOST)
+    message("Using conan for boost")
     conan_cmake_run(SETTINGS cppstd=20)
     conan_cmake_run(REQUIRES boost/1.74.0@conan/stable BASIC_SETUP BUILD missing)
 else()
+    message("Using local boost")
     find_package(Boost REQUIRED)
 endif()
 
