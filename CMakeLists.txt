@@ -87,7 +87,7 @@ if(ENABLE_FUZZING)
   add_subdirectory(fuzz_test)
 endif()
 
-set(USE_CONAN_FOR_BOOST CACHE BOOL TRUE)
+set(USE_CONAN_FOR_BOOST CACHE BOOL ON)
 if(USE_CONAN_FOR_BOOST)
     message("Using conan for boost")
     conan_cmake_run(SETTINGS cppstd=20)
