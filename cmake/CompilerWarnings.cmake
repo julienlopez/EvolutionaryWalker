@@ -29,6 +29,10 @@ function(set_project_warnings project_name)
       /w14906 # string literal cast to 'LPWSTR'
       /w14928 # illegal copy-initialization; more than one user-defined conversion has been implicitly applied
       /permissive- # standards conformance mode for MSVC compiler.
+      # boost related warnings to disable
+      /wd4127
+      /wd4619
+      /D_CRT_SECURE_NO_WARNINGS
   )
 
   set(CLANG_WARNINGS
