@@ -4,6 +4,8 @@
 #include <vector>
 
 #include <boost/numeric/odeint.hpp>
+#include <boost/numeric/odeint/algebra/fusion_algebra.hpp>
+#include <boost/numeric/odeint/algebra/fusion_algebra_dispatcher.hpp>
 
 namespace EvolutionaryWalker::Physics
 {
@@ -14,17 +16,12 @@ namespace Impl
     class Engine
     {
     public:
-        using VelocityVector = LibUtils::Point<VelocityQuantity, 2>;
-        using VelocityVector = LibUtils::Point<VelocityQuantity, 2>;
-        using AccelerationVector = LibUtils::Point<AccelerationQuantity, 2>;
-        using state_type = std::vector<std::pair<Point2d, VelocityVector>>;
-        using deriv_type = std::vector<std::pair<VelocityVector, AccelerationVector>>;
-        using StepperType = boost::numeric::odeint::runge_kutta4<state_type, double, deriv_type, TimeQuantity>;
-        // using StepperType = boost::numeric::odeint::runge_kutta4<
-        //     state_type, double, deriv_type, TimeQuantity,
-        //     typename boost::numeric::odeint::algebra_dispatcher<state_type>::algebra_type,
-        //     typename boost::numeric::odeint::operations_dispatcher<state_type>::operations_type,
-        //     boost::numeric::odeint::never_resizer>;
+        constexpr static const std::size_t number_of_dimensions = 2;
+        using VelocityVector = LibUtils::Point<VelocityQuantity, number_of_dimensions>;
+        using AccelerationVector = LibUtils::Point<AccelerationQuantity, number_of_dimensions>;
+        using state_type = /*std::vector<*/ boost::fusion::vector<LengthQuantity, VelocityQuantity> /*>*/;
+        using deriv_type = /*std::vector<*/ boost::fusion::vector<VelocityQuantity, AccelerationQuantity> /*>*/;
+        using StepperType = boost::numeric::odeint::runge_kutta_dopri5<state_type, double, deriv_type, TimeQuantity>;
 
         struct Node
         {
@@ -49,20 +46,28 @@ namespace Impl
 
         void init()
         {
-            m_stepper = std::make_unique<StepperType>(/*currentState()*/);
+            m_stepper = std::make_unique<StepperType>();
         }
 
-        void step(TimeQuantity /*time_step*/)
+        void step(TimeQuantity time_step)
         {
             assert(m_stepper);
-            // rk.do_step(sys1, inout, t, dt);
-            // rk.do_step( sys1 , inout , dxdtin , t , dt );
             auto x = currentState();
-            // m_stepper.do_step(std::cref(*this), x, TimeQuantity{}, time_step);
-            // m_stepper->do_step([](const state_type& /*x*/, deriv_type& /*dxdt*/, const TimeQuantity& /* t */) {}, x,
-            //                    TimeQuantity{}, time_step);
-
+            m_stepper->do_step(std::cref(*this), x, TimeQuantity{}, time_step);
             applyNewState(x);
+        }
+
+        void operator()(const state_type& /*x*/, deriv_type& /*dxdt*/, const TimeQuantity& /* t */) const
+        {
+            // assert(x.size() == dxdt.size());
+            // for(std::size_t i = 0; i < x.size(); i++)
+            // {
+            //     // dxdt[i].first = x[i].second;
+            //     // dxdt[i].second = -x[0] - gam * x[1];
+            //
+            //     // fusion::at_c<0>(dxdt) = fusion::at_c<1>(x);
+            //     // fusion::at_c<1>(dxdt) = -m_omega * m_omega * fusion::at_c<0>(x);
+            // }
         }
 
         static VelocityVector nullVelocity()
@@ -88,33 +93,31 @@ namespace Impl
             return SpringIndex{m_nodes.size() - 1};
         }
 
+        std::size_t numberOfFreeNodes() const
+        {
+            return std::count_if(begin(m_nodes), end(m_nodes), std::mem_fn(&Node::is_fixed));
+        }
+
     private:
         const AccelerationQuantity m_gravity;
         std::vector<Node> m_nodes;
         std::vector<Spring> m_springs;
         std::unique_ptr<StepperType> m_stepper = nullptr;
-
-        void operator()(const state_type& x, deriv_type& dxdt, const TimeQuantity& /* t */) const
-        {
-            assert(x.size() == dxdt.size());
-            for(std::size_t i = 0; i < x.size(); i++)
-            {
-                // dxdt[i].first = x[i].second;
-                // dxdt[i].second = -x[0] - gam * x[1];
-            }
-        }
-
+        
         state_type currentState() const
         {
-            state_type res;
-            for(const auto& node : m_nodes)
-            {
-                if(node.is_fixed) continue;
-                res.push_back(std::make_pair(node.position, node.speed));
-            }
-            return res;
+            // state_type res;
+            // for(const auto& node : m_nodes)
+            // {
+            //     if(node.is_fixed) continue;
+            //     res.emplace_back(node.position, node.speed);
+            // }
+            // return res;
+        
+            return {};
+            // return {m_nodes.front().position, m_nodes.front().speed};
         }
-
+        
         void applyNewState(const state_type& /*state*/)
         {
         }
