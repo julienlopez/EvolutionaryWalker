@@ -61,6 +61,8 @@ public:
 
     SpringIndex addSpring(const NodeIndex node1, const NodeIndex node2, SpringCharacteristics characteristics);
 
+    Point2d node(const NodeIndex i) const;
+
 private:
     std::unique_ptr<Impl::Engine> m_pimpl;
 };

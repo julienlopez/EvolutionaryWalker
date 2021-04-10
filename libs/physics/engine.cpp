@@ -1,7 +1,11 @@
 #include "engine.hpp"
 
+#include "functional.hpp"
+
 #include <cassert>
 #include <vector>
+
+#include <ranges>
 
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/odeint/algebra/fusion_algebra.hpp>
@@ -51,13 +55,14 @@ namespace Impl
 
         void step(TimeQuantity time_step)
         {
+            assert(numberOfFreeNodes() == 1); // for now
             assert(m_stepper);
             auto x = currentState();
             m_stepper->do_step(std::cref(*this), x, TimeQuantity{}, time_step);
             applyNewState(x);
         }
 
-        void operator()(const state_type& /*x*/, deriv_type& /*dxdt*/, const TimeQuantity& /* t */) const
+        void operator()(const state_type& x, deriv_type& dxdt, const TimeQuantity& /* t */) const
         {
             // assert(x.size() == dxdt.size());
             // for(std::size_t i = 0; i < x.size(); i++)
@@ -68,6 +73,10 @@ namespace Impl
             //     // fusion::at_c<0>(dxdt) = fusion::at_c<1>(x);
             //     // fusion::at_c<1>(dxdt) = -m_omega * m_omega * fusion::at_c<0>(x);
             // }
+            
+            // using boost::fusion::at_c;
+            at_c<0>(dxdt) = at_c<1>(x);
+            at_c<1>(dxdt) = -m_gravity; //-m_omega * m_omega * at_c<0>(x);
         }
 
         static VelocityVector nullVelocity()
@@ -93,9 +102,14 @@ namespace Impl
             return SpringIndex{m_nodes.size() - 1};
         }
 
+        Point2d node(const NodeIndex i) const
+        {
+            return m_nodes[i].position;
+        }
+
         std::size_t numberOfFreeNodes() const
         {
-            return std::count_if(begin(m_nodes), end(m_nodes), std::mem_fn(&Node::is_fixed));
+            return freeNodes().size();
         }
 
     private:
@@ -114,12 +128,28 @@ namespace Impl
             // }
             // return res;
         
-            return {};
-            // return {m_nodes.front().position, m_nodes.front().speed};
+            const auto nodes = freeNodes();
+            state_type res;
+            at_c<0>(res) = nodes.front().position[1];
+            at_c<1>(res) = nodes.front().speed[1];
+            return res;
         }
         
-        void applyNewState(const state_type& /*state*/)
+        void applyNewState(const state_type& state)
         {
+            // TODO do better
+            m_nodes.back().position[1] = at_c<0>(state);
+            m_nodes.back().speed[1] = at_c<1>(state);
+        }
+
+        std::vector<Node> freeNodes() const
+        {
+            using LibUtils::Functional::Not;
+            // TODO try with ranges?
+            // return m_nodes | std::views::filter(LibUtils::Functional::Not(&Node::is_fixed));
+            decltype(m_nodes) res;
+            std::copy_if(begin(m_nodes), end(m_nodes), std::back_inserter(res), Not(std::mem_fn(&Node::is_fixed)));
+            return res;
         }
     };
 
@@ -155,6 +185,11 @@ NodeIndex Engine::addNode(Point2d position, MassQuantity mass)
 SpringIndex Engine::addSpring(const NodeIndex node1, const NodeIndex node2, SpringCharacteristics characteristics)
 {
     return m_pimpl->addSpring(node1, node2, std::move(characteristics));
+}
+
+Point2d Engine::node(const NodeIndex i) const
+{
+    return m_pimpl->node(i);
 }
 
 } // namespace EvolutionaryWalker::Physics
